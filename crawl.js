@@ -4,6 +4,19 @@ async function crawlPage(currentURL) {
     
     try {
         const response = await fetch(currentURL)
+
+        if (response.status > 399) {
+            console.log(`Error fetching ${currentURL}: ${response.status}`)
+            return
+        }   
+
+        // get the content type of the response 
+        const contentType = response.headers.get('content-type')
+        if (!contentType.includes('text/html')) { 
+            console.log(`Non-HTML response, content type:  ${contentType} on page ${currentURL}`)
+            return
+        }
+
         console.log(await response.text())
     } catch (error) {
         console.log(`error fetching ${currentURL}: ${error.message}`)
