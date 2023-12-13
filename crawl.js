@@ -2,25 +2,63 @@ const { JSDOM } = require('jsdom')
 
 async function crawlPage(baseURL, currentURL, pages) {
     
+    
+    const baseURLObj = new URL(baseURL)
+    const currentURLObj = new URL(currentURL)
+    
+    // make sure currentURL is on the same domain as baseURL
+    // if not, return pages
+    if (baseURLObj.hostname !== currentURLObj.hostname) {
+        return pages
+    }
+    
+    // get a normalized version of the currentURL
+    const normalizedCurrentURL = normalizeURL(currentURL)
+    
+    // if the pages object already has an entry for the normalizedCurrentURL
+    // just increment the count and return the current pages object
+    if (pages[normalizedCurrentURL] > 0) {
+        pages[normalizedCurrentURL]++
+        return pages
+    }
+    
+    // if pages obj doesn't exist then make one 
+    pages[normalizedCurrentURL] = 1
+    
+    console.log(`Actively crawling: ${currentURL}`)
+
+
     try {
         const response = await fetch(currentURL)
 
         if (response.status > 399) {
             console.log(`Error in fetch with status code: ${response.status} on page: ${currentURL}`)
-            return
+            return pages
         }   
 
         // get the content type of the response 
         const contentType = response.headers.get('content-type')
         if (!contentType.includes('text/html')) { 
             console.log(`Non-HTML response, content type:  ${contentType} on page: ${currentURL}`)
-            return
+            return pages
         }
 
-        console.log(await response.text())
+        // save html in a variable 
+        const htmlBody = await response.text()
+
+        // extract the links from the html 
+        const nextURLs = getURLsFromHTML(htmlBody, baseURL)
+
+        for (const nextURL of nextURLs) {
+            // recursively crawl the pages 
+            pages = await crawlPage(baseURL, nextURL, pages)
+        }
+
     } catch (error) {
         console.log(`error fetching ${currentURL}: ${error.message}`)
     }
+
+    return pages
 
 
     // console.log(`Actively crawling ${currentURL}`)
